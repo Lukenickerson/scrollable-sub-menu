@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Scrollable Sub Menu</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:700" rel="stylesheet">
+<style>
+body {
+	margin: 0; padding: 0;
+	font-family: Verdana, Arial, sans-serif;
+}
+main {
+	position: absolute; top: 0; bottom: 0;
+	background: #eee;
+	color: #333;
+	width: 100%;
+	height: 100%;
+}
+button {
+	font-family: inherit;
+	font-size: inherit;
+	cursor: pointer;
+	outline: none;
+}
+.scroll-container {
+	position: relative;
+	background: #fff;
+	margin: 6em 0 0 7em;
+	width: 30em;
+	max-height: 30em;
+	overflow: auto;
+	box-shadow: 0 0.1em 0.2em rgba(0,0,0,0.3);
+}
+ul {
+	display: block;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+ul > li {
+ 	display: block;
+ 	min-height: 1em;
+ 	border-bottom: solid 1px #ccc;
+}
+	.list > li::after {
+		content: "";
+		display: table;
+		clear: both;
+	}
+	.list > li > div {
+		float: left;
+	}
+.label {
+ 	padding: 1em;
+ 	min-width: 10em;
+}
+.open-sub-menu {
+	background: transparent;
+	border: solid 1px #ddd;
+	height: 3em;
+	padding: 1em;
+}
+	.open-sub-menu:hover {
+		border-color: #ccc;
+	}
+.sub-menu-container.open .open-sub-menu {
+	background: #eee;
+}
+
+.sub-menu {
+	display: none;
+	opacity: 0;
+	position: absolute;
+	background: #fff;
+	border: solid 1px #ccc;
+	box-shadow: 0 0.2em 0.3em rgba(0,0,0,0.3);
+	transition: all ease-in-out 0.2s;
+}
+	.sub-menu > li {
+		padding: 0.5em;
+		min-width: 10em;
+		cursor: pointer;
+	}
+		.sub-menu > li:hover {
+			background: #eee;
+		}
+.sub-menu-container.open .sub-menu {
+	display: block;
+	opacity: 1;
+}
+</style>
+</head>
+<body>
+<main>
+	<section class="scroll-container">
+		<ul class="list">
+			<!-- populated by javascript, using template below -->
+		</ul>
+	</section>
+</main>
+
+<template id="listItem">
+	<li>
+		<div class="label">{{label}}</div>
+		<div class="sub-menu-container">
+			<button type="button" class="open-sub-menu">open</button>
+			<ul class="sub-menu">
+				<li>Action One</li>
+				<li>Action Two</li>
+				<li>Action Three</li>
+				<li>Action Four</li>
+				<li>Action Five</li>
+				<li>Action Six</li>
+			</ul>
+		</div>
+	</li>
+</template>
+
+
+<script src="scripts/libs/jquery-3.2.1.min.js"></script>
+<script>
+(function setupTheDOM($){
+	let list = $('.list');
+	let itemHTML = $('#listItem').html();
+	for (let i = 0; i < 30; i++) {
+		let newItemHTML = itemHTML.replace('{{label}}', 'Item ' + i);
+		list.append(newItemHTML);
+	}
+})(jQuery);
+
+
+(function setupEvents($){
+	let buttonSelector = '.open-sub-menu';
+	let subMenuSelector = '.sub-menu';
+	let buttons = $(buttonSelector);
+	let subMenus = $(subMenuSelector);
+	let scrollContainer = $('.scroll-container');
+	let subMenuContainers = $('.sub-menu-container');
+
+	buttons.click(function(e){
+		let button = $(this);
+		let subMenu = button.siblings('.sub-menu');
+		let subMenuContainer = button.closest('.sub-menu-container');
+		subMenuContainer.toggleClass('open');
+		closeSubMenus(null, subMenuContainer);
+		adjustSubMenu(subMenu, button);
+	});
+
+	subMenus.on('click', 'li', closeSubMenus);
+	scrollContainer.on('scroll', function(e){
+		let subMenuContainer = subMenuContainers.filter('.open');
+		if (subMenuContainer.length > 0) {
+			let subMenu = subMenuContainer.find(subMenuSelector);
+			let button = subMenuContainer.find(buttonSelector);
+			let inRange = adjustSubMenu(subMenu, button);
+			if (!inRange) {
+				closeSubMenus(e);
+			}
+		}
+	});
+
+	function adjustSubMenu(subMenu, button) {
+		let containerHeight = scrollContainer.height();
+		let scrollHeight = scrollContainer.scrollTop();
+
+		let subMenuHeight = subMenu.outerHeight();
+		let subMenuPos = subMenu.position();
+		subMenuPos.bottom = subMenuPos.top + subMenuHeight;
+
+		let buttonHeight = button.outerHeight();
+		let buttonPos = button.position();
+		buttonPos.bottom = buttonPos.top + buttonHeight;
+
+		console.log("containerHeight", containerHeight, "scrollHeight", scrollHeight, "subMenuHeight", subMenuHeight);
+		console.log("subMenuPos", subMenuPos, "\nbuttonPos", buttonPos);
+		
+		if (buttonPos.bottom <= 0) { // Scrolled off the top
+			return false;
+		} else if (buttonPos.top > containerHeight) { // Scrolled off the bottom
+			return false;
+		} else {
+			if ((buttonPos.bottom + subMenuHeight) > containerHeight) {
+				let newTop = (buttonPos.top - subMenuHeight + scrollHeight);
+				console.log(buttonPos.top, "-", subMenuHeight, "+", scrollHeight, "=", newTop);
+				subMenu.css({'top': newTop});
+			} else {
+				// Not actually needed except for scrolling
+				let newTop = (buttonPos.bottom + scrollHeight);
+				subMenu.css({'top': newTop});
+			}
+			return true;
+		}
+	}
+
+	function closeSubMenus(e, notSubMenuContainer) {
+		subMenuContainers.not(notSubMenuContainer)
+			.removeClass('open')
+			.find(subMenuSelector).css({'top': null}); // remove the `top` style
+	}
+})(jQuery);
+
+</script>
+
+</body>
+</html>
